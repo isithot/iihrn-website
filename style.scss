@@ -155,17 +155,18 @@ h1 {
 .tmaxmin-block {
   display: flex;
   flex-flow: row wrap;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 1em;
+
+  p {
+    margin: 0;
+  }
   
   .tmaxmin-chip {
     display: flex;
     flex-flow: column;
     justify-content: center;
     text-align: center;
-
-    p {
-      margin: 0;
-    }
 
     #tmax-1, #tmin-1 {
       font-weight: bold;
@@ -177,27 +178,45 @@ h1 {
     }
   
   }
+
+  .tmaxmin-divider {
+    // width: 80px;
+    margin-top: 40px;
+    color: grey;
+
+  }
+}
+
+@include media-breakpoint-up(lg) {
+  .tmaxmin-block {
+    justify-content: space-between;
+  }
 }
 
 .tavg-block {
   margin-top: 2em;
   display: flex;
-  flex-flow: row wrap;
-  justify-content: center ;
+  flex-flow: column nowrap;
+  justify-content: center;
 
-  #tavg-1 {
+  p {
+    margin: 0;
+  }
+
+  .tavg-feat {
     
     text-align: center;
+    text-wrap: nowrap;
 
     span {
-      display: inline-block;
       font-weight: bold;
+      display: inline-block;
       border-radius: 1em;
       font-size: 125%;
     }
   }
   
-  #tavg-2 {
+  .tavg-detail {
     text-align: center;
     font-size: 75%;
     color: grey;

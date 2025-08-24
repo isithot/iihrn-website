@@ -52,9 +52,9 @@ md`${statsPlace.isit_comment}`
 
 # Here's how today compares... {#detail}
 
-::::{.grid}
+::::{.grid style="row-gap: 1em;"}
 
-:::{.g-col-12 .g-col-md-4 style="margin-block: auto;"}
+:::{.g-col-12 .g-col-lg-4 style="margin-block: auto;"}
 
 ```{ojs}
 //| label: datetime-formatting
@@ -79,10 +79,21 @@ percentRating = statsPlace.isit_average.toFixed(1) + "%"
 ```{ojs}
 //| label: tmin
 
-md`${statsPlace.isit_minimum} °C  `
+md`Min ${statsPlace.isit_minimum} °C  `
 md`${tminWhenFriendly}`
 ```
 
+:::
+
+:::{.tmaxmin-divider aria-hidden="true"}
+```{ojs}
+svg`<svg width="80" viewBox="0 0 80 150" xmlns="http://www.w3.org/2000/svg">
+  <line x1="0" y1="60" x2="80" y2="60" stroke="currentColor" />
+  <line x1="40" y1="60" x2="40" y2="140" stroke="currentColor" />
+  <line x1="40" y1="140" x2="20" y2="120" stroke="currentColor" />
+  <line x1="40" y1="140" x2="60" y2="120" stroke="currentColor" />
+</svg>`
+```
 :::
 
 :::{.tmaxmin-chip}
@@ -92,7 +103,7 @@ md`${tminWhenFriendly}`
 ```{ojs}
 //| label: tmax
 
-md`${statsPlace.isit_maximum} °C  `
+md`Max ${statsPlace.isit_maximum} °C  `
 md`${tmaxWhenFriendly}`
 ```
 
@@ -102,21 +113,30 @@ md`${tmaxWhenFriendly}`
 
 ::::{.tavg-block}
 
+:::{.tavg-feat}
+
 ```{ojs}
-//| label: tavg
 html`
 <div class="answer-icon-and-label">
   <span class="answer-icon" style="background-color: ${answers[statsPlace.isit_answer].fill2};"></span>
   <span>${statsPlace.isit_current.toFixed(1)} °C</span>
 </div>`
-md`Average so far<br>hotter than **${percentRating}** of days for this time of year.`
 ```
+
+:::
+
+:::{.tavg-detail}
+```{ojs}
+md`**Daily average**`
+md`Hotter than **${percentRating}** of days for this time of year.`
+```
+:::
 
 ::::
 
 :::
 
-:::{.g-col-12 .g-col-md-8}
+:::{.g-col-12 .g-col-lg-8}
 ```{ojs}
 //| label: ts
 //| classes: iihrn-figure
@@ -130,13 +150,13 @@ md`![](${bucket_base + "plots/timeseries/timeseries-" + stationId + ".png"})`
 
 ::::{.grid style="margin-top: 2rem;"}
 
-:::{.g-col-12 .g-col-md-4 style="margin-block: auto;"}
+:::{.g-col-12 .g-col-lg-4 style="margin-block: auto;"}
 
 This is the distribution of temperatures typical for this time of year, which we've defined as a seven day window either side of today. Just like a bell curve, the plot is higher at more common temperatures and lower at rare temperatures.
 
 :::
 
-:::{.g-col-12 .g-col-md-8}
+:::{.g-col-12 .g-col-lg-8}
 ```{ojs}
 //| label: dist
 //| classes: iihrn-figure

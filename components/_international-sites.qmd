@@ -6,7 +6,7 @@
 :::{.flags}
 - [![Spain](/assets/flags/es.svg) Hoy extremo?](https://hoyextremo.com/)
 - [![Germany](/assets/flags/de.svg) Es ist warm?](https://esistwarm.jetzt)
-- [![Germany](/assets/flags/de.svg) Zu heisse heute?](https://zuheissheute.de/)
+- [![Germany](/assets/flags/de.svg) Zu heiss heute?](https://zuheissheute.de/)
 - [![Bochum](/assets/flags/bochum.svg) Is Bochum hot right now?](https://scp.geographie.rub.de/isithot/lmss)
 - [![UK](/assets/flags/gb.svg) Is the UK hot right now?](https://istheukhotrightnow.com/)
 :::

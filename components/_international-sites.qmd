@@ -9,6 +9,7 @@
 - [![Germany](/assets/flags/de.svg) Zu heiss heute?](https://zuheissheute.de/)
 - [![Bochum](/assets/flags/bochum.svg) Is Bochum hot right now?](https://scp.geographie.rub.de/isithot/lmss)
 - [![UK](/assets/flags/gb.svg) Is the UK hot right now?](https://istheukhotrightnow.com/)
+- [![Slovenia](/assets/flags/si.svg) Ali je danes vroče?](https://podnebnik.org)
 :::
 
 ::::

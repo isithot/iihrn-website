@@ -3,3 +3,5 @@ _site
 places/*
 !places/index.qmd
 !places/_place-outer.qmd
+
+**/*.quarto_ipynb

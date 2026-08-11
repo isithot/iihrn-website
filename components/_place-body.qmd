@@ -2,7 +2,7 @@
 //| label: load-data
 //| echo: false
 
-statsPlace = FA(bucket_base + "stats/stats_" + stationId + ".json").json()
+statsPlace = FA(bucket_www + "stats/stats_" + stationId + ".json").json()
 ```
 
 ::::::{.column-screen style="height: 95svh;"}
@@ -121,7 +121,7 @@ md`Average so far<br>hotter than **${percentRating}** of days for this time of y
 //| label: ts
 //| classes: iihrn-figure
 //| echo: false
-md`![](${bucket_base + "plots/timeseries/timeseries-" + stationId + ".png"})`
+md`![](${bucket_www + "plots/timeseries/timeseries-" + stationId + ".png"})`
 ```
 
 :::
@@ -141,7 +141,7 @@ This is the distribution of temperatures typical for this time of year, which we
 //| label: dist
 //| classes: iihrn-figure
 //| echo: false
-md`![](${bucket_base + "plots/distribution/distribution-" + stationId + ".png"})`
+md`![](${bucket_www + "plots/distribution/distribution-" + stationId + ".png"})`
 ```
 :::
 
@@ -165,7 +165,7 @@ We've compared every day this year at <strong> ${statsPlace.isit_label}</strong>
 //| classes: iihrn-figure
 //| echo: false
 heatmapYear = (new Date()).toLocaleString("en-US", {timeZone: "Australia/Melbourne", year: "numeric"})
-md`![](${bucket_base + "plots/heatmap/heatmap-" + stationId + "-" + heatmapYear + ".png"})`
+md`![](${bucket_www + "plots/heatmap/heatmap-" + stationId + "-" + heatmapYear + ".png"})`
 ```
 
 ::::

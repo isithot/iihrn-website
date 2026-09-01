@@ -200,7 +200,7 @@ Plot.plot({
       dx: 10,
       fill: "#3333333",
       stroke: "#eeeeee",
-      strokeWidth: 3,
+      strokeWidth: 5,
     }),
     // trend
     Plot.line(tavgTrend, {
@@ -221,7 +221,7 @@ Plot.plot({
       dx: 10,
       fill: "#3333333",
       stroke: "#eeeeee",
-      strokeWidth: 3,
+      strokeWidth: 5,
     }),
     // today
     Plot.dot([today], {
@@ -237,7 +237,7 @@ Plot.plot({
       text: () => "TODAY",
       fill: "#333333",
       stroke: "#eeeeee",
-      strokeWidth: 3,
+      strokeWidth: 5,
       dy: -20
     }),
     Plot.text([today], {

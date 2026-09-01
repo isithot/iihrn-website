@@ -292,6 +292,42 @@ This is the distribution of temperatures typical for this time of year, which we
 //| classes: iihrn-figure
 //| echo: false
 md`![](${bucket_www + "plots/distribution/distribution-" + stationId + ".png"})`
+
+// from https://observablehq.com/@d3/kernel-density-estimation under isc licence
+kde = function(kernel, thresholds, data) {
+  return thresholds.map(t => [t, d3.mean(data, d => kernel(t - d))]);
+}
+epanechnikov = function(bandwidth) {
+  return x => Math.abs(x /= bandwidth) <= 1 ? 0.75 * (1 - x * x) / bandwidth : 0;
+}
+
+// bandwidth slider for tuning purposes
+viewof bandwidth = Inputs.range([1, 20], {
+  value: 7,
+  step: 0.1,
+  label: "Bandwidth"
+})
+
+historical_tavg = historical.map(d => d.Tavg)
+thresholds = d3.ticks(...d3.nice(...d3.extent(historical_tavg), 2), 40)
+historical_density = kde(epanechnikov(bandwidth), thresholds, historical_tavg)
+
+historical_density
+
+Plot.plot({
+  marks: [
+    Plot.areaY(historical_density, {
+      x: d => d[0],
+      y: d => d[1],
+      // z: null, // prerelease observable plot only
+      curve: "basis"
+      })
+  ]
+  // TODO - how to do the x fill?
+  // think we can do it in prerelease observable plot with z: null. see:
+  // - https://observablehq.com/plot/marks/area
+  // - https://github.com/observablehq/plot
+})
 ```
 :::
 

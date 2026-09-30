@@ -2,7 +2,7 @@
 //| label: load-data
 //| echo: false
 
-statsPlace = FA(bucket_base + "stats/stats_" + stationId + ".json").json()
+statsPlace = FA(bucket_www + "stats/stats_" + stationId + ".json").json()
 ```
 
 ::::::{.column-screen style="height: 95svh;"}
@@ -13,20 +13,26 @@ Is it hot in ${statsPlace.isit_label} right now?
 ```{ojs}
 //| label: answer
 
+// ordered coolest -> hottest so we can derive scales (eg. colour) from position
 // not using background gradients anymore, just fill2
-answers = ({
-  "Hell no!":   {color: "white",   fill1: "#5287d1", fill2: "#2166ac" },
-  "No!":        {color: "white",   fill1: "#a2cdeb", fill2: "#67a9cf" },
-  "Nope":       {color: "#333333", fill1: "#f5f8fa", fill2: "#d1e5f0" },
-  "Not really": {color: "#333333", fill1: "#f7f7f7", fill2: "#ebebeb" },
-  "Yup":        {color: "#333333", fill1: "#fddcca", fill2: "#f7cfb7" },
-  "Yeah!":      {color: "white",   fill1: "#de7b49", fill2: "#fc946a" },
-  "Hell yeah!": {color: "white",   fill1: "#d1231d", fill2: "#b2182b" }
-})
+answers = [
+  { message: "Hell no!",   color: "white",   fill1: "#5287d1", fill2: "#2166ac", size: 1 },
+  { message: "No!",        color: "white",   fill1: "#a2cdeb", fill2: "#67a9cf", size: 3 },
+  { message: "Nope",       color: "#333333", fill1: "#d1e5f0", fill2: "#d1e5f0", size: 4 },
+  { message: "Not really", color: "#333333", fill1: "#f7f7f7", fill2: "#ebebeb", size: 4 },
+  { message: "Yup",        color: "#333333", fill1: "#fddcca", fill2: "#f7cfb7", size: 4 },
+  { message: "Yeah!",      color: "white",   fill1: "#de7b49", fill2: "#fc946a", size: 3 },
+  { message: "Hell yeah!", color: "white",   fill1: "#d1231d", fill2: "#b2182b", size: 1 }
+]
+
+// lookup by message, for spots that just want "the answer" (eg. statsPlace.isit_answer)
+answersByMessage = new Map(answers.map(d => [d.message, d]))
+
+answerColors = answers.flatMap(d => Array.from({ length: d.size }, () => d.fill1))
 
 html`
 <div class="answer-icon-and-label">
-  <span class="answer-icon" style="background-color: ${answers[statsPlace.isit_answer].fill2};">
+  <span class="answer-icon" style="background-color: ${answersByMessage.get(statsPlace.isit_answer).fill2};">
   </span>
   <span>${statsPlace.isit_answer}</span>
 </div>`
@@ -68,6 +74,8 @@ tminWhenFriendly = isFinite(tminWhen) ?
   datefns.formatRelative(tminWhen, new Date()) : ""
 
 percentRating = statsPlace.isit_average.toFixed(1) + "%"
+
+
 ```
 
 ::::{.tmaxmin-block}
@@ -106,7 +114,7 @@ md`${tmaxWhenFriendly}`
 //| label: tavg
 html`
 <div class="answer-icon-and-label">
-  <span class="answer-icon" style="background-color: ${answers[statsPlace.isit_answer].fill2};"></span>
+  <span class="answer-icon" style="background-color: ${answersByMessage.get(statsPlace.isit_answer).fill2};"></span>
   <span>${statsPlace.isit_current.toFixed(1)} °C</span>
 </div>`
 md`Average so far<br>hotter than **${percentRating}** of days for this time of year.`
@@ -120,8 +128,153 @@ md`Average so far<br>hotter than **${percentRating}** of days for this time of y
 ```{ojs}
 //| label: ts
 //| classes: iihrn-figure
-//| echo: false
-md`![](${bucket_base + "plots/timeseries/timeseries-" + stationId + ".png"})`
+
+d3regression = require("d3-regression@1.3.10")
+
+hist_path = `${bucket_processed}historical_${stationId}.txt`
+historical = FA(hist_path).csv({typed: true})
+
+plotCaption = "© isithotrightnow.com"
+
+// same domain/range Plot's own colour scale below will build, so breakpoints
+// line up exactly with the dots' colours. answerColors is 20 equal-sized
+// (5%-wide) buckets, so the first/last breakpoints ARE the 5th/95th percentiles.
+tavgQuantileScale = d3.scaleQuantile()
+  .domain(historical.map(d => d.Tavg))
+  .range(answerColors)
+
+tavgBreaks = tavgQuantileScale.quantiles()
+tavg05 = tavgBreaks[0]
+tavg95 = tavgBreaks[tavgBreaks.length - 1]
+
+
+// date formatting
+today = ({
+  Date: new Date(Math.max(
+    new Date(statsPlace.isit_maximum_dt),
+    new Date(statsPlace.isit_minimum_dt))),
+  Tavg: statsPlace.isit_current
+})
+
+dayMonthOptions = ({
+  month: 'long',
+  day: 'numeric'
+})
+
+dayMonthLabel = today.Date.toLocaleDateString("en-AU", dayMonthOptions)
+
+// fit against the raw timestamp; .a (the slope) is in °C/ms, used below for
+// the trend label. Map the two fitted endpoints back to Date objects so
+// Plot.line reads them on the same time x-scale as the dots
+tavgFit = d3regression.regressionLinear()
+  .x(d => d.Date.getTime())
+  .y(d => d.Tavg)
+  (historical)
+tavgTrend = tavgFit.map(([x, y]) => ({ Date: new Date(x), Tavg: y }))
+tavgTrendPerCentury = tavgFit.a * 1000 * 60 * 60 * 24 * 365.25 * 100
+
+leftmostDate = d3.min(historical, d => d.Date)
+
+Plot.plot({
+  marks: [
+    // historical data
+    Plot.dot(historical, {
+      x: "Date",
+      y: "Tavg",
+      fill: "Tavg",
+      tip: true,
+      r: 2
+    }),
+    // extreme percentiles
+    Plot.ruleY([tavg05, tavg95], {
+      stroke: "#333333",
+      strokeDasharray: "4,2"
+    }),
+    Plot.text([
+      { y: tavg05, text: `5th percentile: ${tavg05.toFixed(1)}°C` },
+      { y: tavg95, text: `95th percentile: ${tavg95.toFixed(1)}°C` }
+    ], {
+      x: leftmostDate,
+      y: "y",
+      text: "text",
+      textAnchor: "start",
+      dy: -15,
+      dx: 10,
+      fill: "#3333333",
+      stroke: "#eeeeee",
+      strokeWidth: 5,
+    }),
+    // trend
+    Plot.line(tavgTrend, {
+      x: "Date",
+      y: "Tavg",
+      stroke: "black",
+      strokeWidth: 2
+    }),
+    Plot.text(
+      [
+        { text: `Trend: ${tavgTrendPerCentury >= 0 ? "+" : ""}${tavgTrendPerCentury.toFixed(1)}°C/century` }
+      ], {
+      x: tavgTrend[0].Date,
+      y: tavgTrend[0].Tavg,
+      text: "text",
+      textAnchor: "start",
+      dy: -21,
+      dx: 10,
+      fill: "#3333333",
+      stroke: "#eeeeee",
+      strokeWidth: 5,
+    }),
+    // today
+    Plot.dot([today], {
+      x: "Date",
+      y: "Tavg",
+      fill: tavgQuantileScale(today.Tavg),
+      stroke: "#333333",
+      r: 6,
+    }),
+    Plot.text([today], {
+      x: "Date",
+      y: "Tavg",
+      text: () => "TODAY",
+      fill: "#333333",
+      stroke: "#eeeeee",
+      strokeWidth: 5,
+      dy: -20
+    }),
+    Plot.text([today], {
+      x: "Date",
+      y: "Tavg",
+      text: d => `${d.Tavg.toFixed(1)}°C`,
+      fill: "#333333",
+      stroke: "#eeeeee",
+      strokeWidth: 3,
+      dy: 20
+    }),
+    // plot frame
+    Plot.frame({
+      stroke: "#333333",
+      strokeWidth: 3,
+      anchor: "bottom"
+    }),
+    Plot.frame({
+      stroke: "#333333",
+      strokeWidth: 3,
+      anchor: "left"
+    })
+  ],
+  color: {
+    type: "quantile",
+    range: answerColors
+  },
+  style: {
+    fontFamily: "Roboto Condensed",
+    fontWeight: "bold",
+    fontSize: 14
+  },
+  title: `${statsPlace.isit_label} daily average temperatures for the two weeks around ${dayMonthLabel}`,
+  caption: plotCaption
+})
 ```
 
 :::
@@ -141,7 +294,114 @@ This is the distribution of temperatures typical for this time of year, which we
 //| label: dist
 //| classes: iihrn-figure
 //| echo: false
-md`![](${bucket_base + "plots/distribution/distribution-" + stationId + ".png"})`
+
+// reproduction of R's stats::density() and stats::bw.nrd0()
+gaussianKernel = u => Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI)
+
+// port of R's bw.nrd0(): d3.quantile() uses the same R-7 interpolation as
+// R's default quantile(), and d3.deviation() is the same sample sd as R's sd()
+bwNrd0 = function(x) {
+  const n = x.length
+  const hi = d3.deviation(x)
+  const iqr = (d3.quantile(x, 0.75) - d3.quantile(x, 0.25)) / 1.34
+  let lo = Math.min(hi, iqr)
+  if (lo === 0) lo = hi !== 0 ? hi : (Math.abs(x[0]) !== 0 ? Math.abs(x[0]) : 1)
+  return 0.9 * lo * Math.pow(n, -0.2)
+}
+
+kde = function(bandwidth, grid, data) {
+  const n = data.length
+  return grid.map(x => [
+    x,
+    d3.sum(data, d => gaussianKernel((x - d) / bandwidth)) / (n * bandwidth)
+  ])
+}
+
+historical_tavg = historical.map(d => d.Tavg)
+bandwidth = bwNrd0(historical_tavg)
+
+// from/to are passed explicitly in the lambda's stat_density_ridges() call as
+// the data's min/max (rather than stats::density()'s default of extending
+// 3 bandwidths past each end), and n (grid points) is left at its default of 512
+gridFrom = d3.min(historical_tavg)
+gridTo = d3.max(historical_tavg)
+grid = d3.range(512).map(i => gridFrom + (gridTo - gridFrom) * i / 511)
+
+historical_density = kde(bandwidth, grid, historical_tavg)
+
+// tavg05/tavg95 come from the ts block's tavgQuantileScale (same breaks as
+// the colour bands here); tavg50 is the plain median of the same data
+tavg50 = d3.median(historical_tavg)
+
+Plot.plot({
+  marks: [
+    Plot.areaY(historical_density, {
+      x: d => d[0],
+      y: d => d[1],
+      // fill colour by temperature's answer-quantile bucket, using the same
+      // scale as the ts plot above so the two match; z: null keeps this a
+      // single contiguous area (no gaps at the colour boundaries) rather
+      // than splitting into separate non-touching series per colour - see
+      // https://observablehq.com/plot/marks/area#varying-color
+      fill: d => tavgQuantileScale(d[0]),
+      z: null,
+      curve: "basis"
+      }),
+    // today marker
+    Plot.ruleX([today.Tavg], {
+      stroke: "#333333",
+      strokeWidth: 2
+    }),
+    Plot.text([
+      { text: `TODAY: ${today.Tavg.toFixed(1)}°C` }
+    ], {
+      x: () => today.Tavg,
+      text: "text",
+      frameAnchor: "top",
+      lineAnchor: "middle",
+      textAnchor: "end",
+      rotate: 270,
+      dy: 6,
+      dx: -10,
+      fill: "#333333",
+      stroke: "#eeeeee",
+      strokeWidth: 5
+    }),
+    // 5th/50th/95th percentile labels
+    Plot.text([
+      { x: tavg05, text: `5th percentile: ${tavg05.toFixed(1)}°C` },
+      { x: tavg50, text: `Median: ${tavg50.toFixed(1)}°C` },
+      { x: tavg95, text: `95th percentile: ${tavg95.toFixed(1)}°C` }
+    ], {
+      x: "x",
+      text: "text",
+      frameAnchor: "bottom",
+      lineAnchor: "middle",
+      textAnchor: "start",
+      rotate: -90,
+      dy: -6,
+      fill: "#333333",
+      stroke: "#eeeeee",
+      strokeWidth: 5
+    }),
+  ],
+  y: {
+    axis: null
+  },
+  x: {
+    tickFormat: d => `${d}°C`,
+    label: "Daily average temperature",
+  },
+  style: {
+    fontFamily: "Roboto Condensed",
+    fontWeight: "bold",
+    fontSize: 16
+  },
+  height: 320,
+  marginBottom: 50,
+  title: `${statsPlace.isit_label} daily average temperatures for the two weeks around ${dayMonthLabel}`,
+  caption: plotCaption
+})
 ```
 :::
 
@@ -165,7 +425,149 @@ We've compared every day this year at <strong> ${statsPlace.isit_label}</strong>
 //| classes: iihrn-figure
 //| echo: false
 heatmapYear = (new Date()).toLocaleString("en-US", {timeZone: "Australia/Melbourne", year: "numeric"})
-md`![](${bucket_base + "plots/heatmap/heatmap-" + stationId + "-" + heatmapYear + ".png"})`
+heatmapData = FA(bucket_processed + stationId + "-" + heatmapYear + ".csv").csv({ typed: true })
+```
+
+```{ojs}
+//| label: hw-ojs
+//| classes: iihrn-figure
+//| echo: false
+
+monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+month3 = d3.timeFormat("%b")
+
+heatmapPrepped = heatmapData.map(d => ({
+  ...d,
+  month: month3(d.date),
+  day: d.date.getDate()
+}))
+
+// cumulative 5%-multiples of each answer tier's `size`, eg [0,5,20,40,60,80,95,100] -
+// the lambda's createHeatmapPlot() uses these same breaks (0.05,0.2,0.4,0.6,0.8,0.95)
+// for its image()/colkey() call, so cell shading and legend bands line up with it
+answerBreaks = answers.reduce((acc, d) => {
+  acc.push(acc[acc.length - 1] + d.size * 5)
+  return acc
+}, [0])
+
+percentileColorScale = d3.scaleThreshold()
+  .domain(answerBreaks.slice(1, -1))
+  .range(answers.map(d => d.fill1))
+
+// contrasting text colour per tier (white on the dark blue/red extremes,
+// dark grey on the light middle tiers) - reusing answers' own `color` field,
+// which already exists for exactly this purpose in the answer banner above
+percentileTextColorScale = d3.scaleThreshold()
+  .domain(answerBreaks.slice(1, -1))
+  .range(answers.map(d => d.color))
+
+
+md`### ${statsPlace.isit_label} percentiles for ${heatmapYear}`
+
+// flip the heatmap axes at narrow widths
+// hide the text layer altogether at very narrow widths
+heatmapIsNarrow = width < 768
+heatmapIsVeryNarrow = width < 450
+heatmapHeight = heatmapIsNarrow ? 2100 : 425
+heatmapFontSize = heatmapIsNarrow ? 20 : 12
+
+heatmapStyle = ({
+  fontFamily: "Roboto Condensed",
+  fontWeight: "bold",
+  fontSize: heatmapFontSize
+})
+
+heatmapPlot = Plot.plot({
+  marginLeft: 40,
+  marginTop: 30,
+  marginBottom: 10,
+  x: heatmapIsNarrow ? {
+    domain: monthOrder,
+    label: null,
+    axis: "top",
+    tickSize: 0,
+    tickFormat: d => d.charAt(0),
+    padding: 0
+  } : {
+    domain: d3.range(1, 32),
+    label: null,
+    axis: "top",
+    tickSize: 0,
+    padding: 0
+  },
+  y: heatmapIsNarrow ? {
+    domain: d3.range(1, 32),
+    label: null,
+    tickSize: 0,
+    padding: 0
+  } : {
+    domain: monthOrder,
+    label: null,
+    tickSize: 0,
+    padding: 0
+  },
+  marks: [
+    Plot.cell(heatmapPrepped, {
+      x: heatmapIsNarrow ? "month" : "day",
+      y: heatmapIsNarrow ? "day" : "month",
+      fill: d => percentileColorScale(d.percentile),
+      inset: 0
+    }),
+    heatmapIsVeryNarrow ? null : Plot.text(heatmapPrepped, {
+      x: heatmapIsNarrow ? "month" : "day",
+      y: heatmapIsNarrow ? "day" : "month",
+      text: d => Math.round(d.percentile),
+      fill: d => percentileTextColorScale(d.percentile),
+      fontSize: heatmapFontSize
+    }),
+    Plot.frame({ stroke: "#333333", strokeWidth: 1 })
+  ],
+  height: heatmapHeight,
+  width: 900,
+  style: heatmapStyle,
+  caption: plotCaption
+})
+
+// vertical colour-bar legend: a single stacked column, one rect per answer
+// tier, with height proportional to the tier's width (matching the lambda's
+// colkey() bands) rather than 7 equal-height swatches - Plot's built-in
+// legends don't support this (threshold color legends only render as a
+// horizontal ramp), so it's built by hand from the same answerBreaks
+answerBands = answers.map((d, i) => ({
+  y1: answerBreaks[i],
+  y2: answerBreaks[i + 1],
+  fill: d.fill1
+}))
+
+heatmapLegend = Plot.plot({
+  marginLeft: 6,
+  marginRight: 34,
+  marginTop: 30,
+  marginBottom: 10,
+  x: {
+    axis: null,
+    domain: [0, 1]
+  },
+  y: {
+    domain: [0, 100],
+    ticks: answerBreaks,
+    label: null,
+    axis: "right"
+  },
+  marks: [
+    Plot.rect(answerBands, { x1: 0, x2: 1, y1: "y1", y2: "y2", fill: "fill" }),
+    Plot.frame({ stroke: "#333333", strokeWidth: 1 })
+  ],
+  width: 80,
+  height: heatmapHeight,
+  marginRight: 50,
+  style: heatmapStyle
+})
+
+html`<div style="display: flex; align-items: flex-start;">
+  <div style="flex: 1 1 auto; min-width: 0;">${heatmapPlot}</div>
+  ${heatmapLegend}
+</div>`
 ```
 
 ::::

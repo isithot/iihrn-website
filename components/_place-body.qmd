@@ -182,7 +182,21 @@ Plot.plot({
       x: "Date",
       y: "Tavg",
       fill: "Tavg",
-      tip: true,
+      // labels live on channels (tip's `format` only takes formatters), so the
+      // default x/y/fill entries are suppressed in favour of these two
+      channels: {
+        date: { value: "Date", label: "" },
+        temperature: { value: "Tavg", label: "Daily temperature" }
+      },
+      tip: {
+        format: {
+          date: d => d3.utcFormat("%B %-d %Y")(d),
+          temperature: d => `${d.toFixed(1)}°C`,
+          x: false,
+          y: false,
+          fill: false
+        }
+      },
       r: 2
     }),
     // extreme percentiles

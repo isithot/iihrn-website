@@ -23,7 +23,7 @@ nowHour >= 10 && nowHour <= 22 ?
 //| echo: false
 //| error: false
 
-statsAllRaw = FA(bucket_base + "stats/stats_all.json").json()
+statsAllRaw = FA(bucket_www + "stats/stats_all.json").json()
 
 // statsAllRaw is an object with keys by station id, but we
 // need an array with an id field. let's move the ids in

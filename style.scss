@@ -84,6 +84,14 @@ h1 {
   img {
     width: 100%;
   }
+
+  figure {
+    h2 {
+      text-align: center;
+      font-size: 1.25rem;
+      border-bottom: none;
+    }
+  }
 }
 
 .iihrn-map svg {
